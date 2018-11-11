@@ -44,20 +44,20 @@ def index():
 
 @app.route('/blog', methods=['POST', 'GET'])
 def blog_listing():
-    post_id = request.args.get('id')
-    user = request.args.get('user')
     title = "Build a Blog"
-    user_id = User.query.filter_by(username = user).first()
 
     if session:
         owner = User.query.filter_by(username = session['username']).first()
 
-    if post_id:
+    if "id" in request.args:
+        post_id = request.args.get('id')
         blog = Blog.query.filter_by(id = post_id).all()
+        # username = User.query.get(owner.username)
         return render_template('blogs.html', title = title, blog = blog, post_id = post_id)
 
-    elif user:
-        blog = Blog.query.filter_by(owner = user_id).all()
+    elif "user" in request.args:
+        user_id = request.args.get('user')
+        blog = Blog.query.filter_by(owner_id = user_id).all()
         return render_template('blogs.html', title = title, blog = blog)
 
     else:
@@ -148,8 +148,6 @@ def create_new_post():
         blog_title = request.form['blog_title']
         blog_content = request.form['blog_content']
 
-        new_post = Blog(blog_title, blog_content, owner)
-
         if blog_title == "":
             title_error = "Please enter a title!"
 
@@ -157,17 +155,20 @@ def create_new_post():
             content_error = "Please enter a post!"
 
         if title_error == "" and content_error == "":
+            new_post = Blog(blog_title, blog_content, owner)
             db.session.add(new_post)
             db.session.commit()
+            blog_id = Blog.query.order_by(Blog.id.desc()).first()
+            user = owner
 
-            return redirect('/blog?id={}'.format(new_post.id))
+            return redirect('/blog?id={}&user={}'.format(blog_id.id, user.username))
 
     return render_template('newpost.html', title = "Add a new post", blog_title = blog_title, blog_content = blog_content, title_error = title_error, content_error = content_error)
 
 @app.route('/logout')
 def logout():
     del session['username']
-    return redirect('/')
+    return redirect('/blog')
 
 if __name__ == "__main__":
     app.run()
